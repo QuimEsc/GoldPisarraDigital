@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuració de Grups</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Creeu els grups</h1>
+        
+        <div id="group-list">
+            <div class="group-item">
+                <label for="group-1">Grup 1:</label>
+                <input type="text" id="group-1" maxlength="25" placeholder="Nom del grup 1">
+            </div>
+            <div class="group-item">
+                <label for="group-2">Grup 2:</label>
+                <input type="text" id="group-2" maxlength="25" placeholder="Nom del grup 2">
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button id="addGroup">[ + ] Afegir grup</button>
+            <button id="removeGroup">[ - ] Eliminar grup</button>
+        </div>
+
+        <div class="button-container">
+            <button id="startGame" class="primary">Enviar</button>
+        </div>
+    </div>
+
+    <script src="js/grupos.js"></script>
+</body>
+</html>

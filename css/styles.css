@@ -1,0 +1,206 @@
+/* Estilos generales */
+:root {
+  --primary-color: #4a47a3;
+  --secondary-color: #706fd3;
+  --background-color: #f6f5f7;
+  --text-color: #333;
+  --white: #fff;
+  --green: #2ecc71;
+  --red: #e74c3c;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.container {
+  background: var(--white);
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+}
+
+h1, h2 {
+  color: var(--primary-color);
+}
+
+/* --- Página de Grupos (index.html) --- */
+#group-list .group-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+#group-list label {
+  font-weight: bold;
+  margin-right: 10px;
+  min-width: 80px;
+}
+
+#group-list input {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+.button-container {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+button {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--secondary-color);
+  color: var(--white);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+button:hover {
+  background-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+button.primary {
+  background-color: var(--primary-color);
+  font-weight: bold;
+}
+
+/* --- Página de Juego (juego.html) --- */
+#scores-container {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.score-block {
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: var(--white);
+  min-width: 120px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.score-block.active {
+    transform: scale(1.15);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    border: 3px solid var(--white);
+}
+.score-block h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+.score-block p {
+    margin: 5px 0 0;
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+#question-container {
+    padding: 25px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    color: var(--white);
+    transition: background-color 0.5s;
+}
+#question-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+#options-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.option {
+    padding: 20px;
+    background: var(--white);
+    border: 2px solid var(--secondary-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+}
+.option:hover:not(.disabled) {
+    background-color: #eef;
+    transform: translateY(-3px);
+}
+.option.correct {
+    background-color: var(--green);
+    color: var(--white);
+    border-color: var(--green);
+}
+.option.incorrect {
+    background-color: var(--red);
+    color: var(--white);
+    border-color: var(--red);
+}
+.option.disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+#chests-container {
+    display: none; /* Oculto por defecto */
+    justify-content: space-around;
+    margin-top: 30px;
+    gap: 20px;
+}
+.chest {
+    font-size: 4rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.chest:hover {
+    transform: scale(1.2);
+}
+
+#podium-container {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+}
+.podium-step {
+    margin: 5px;
+    padding: 15px 30px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    width: 80%;
+}
+.podium-1 { background-color: #ffd700; color: #333; }
+.podium-2 { background-color: #c0c0c0; color: #333; }
+.podium-3 { background-color: #cd7f32; }
+
+/* Responsive */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+    }
+    #options-container {
+        grid-template-columns: 1fr;
+    }
+}
