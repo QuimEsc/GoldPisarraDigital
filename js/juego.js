@@ -21,6 +21,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chestEffects = [
         { type: 'add', value: 50, message: "+50 Punts" },
         { type: 'add', value: 100, message: "+100 Punts" },
+        { type: 'add', value: 50, message: "+60 Punts" },
+        { type: 'add', value: 100, message: "+80 Punts" },
+        { type: 'add', value: 50, message: "+75 Punts" },
+        { type: 'add', value: 100, message: "+25 Punts" },
         { type: 'subtract', value: 25, message: "-25 Punts" },
         { type: 'subtract', value: 75, message: "-75 Punts" },
         { type: 'percentage', value: 0.3, message: "+30% de Punts" },
@@ -239,3 +243,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveScores(groups);
     }
 });
+
