@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Referencias a elementos del DOM
+    // Referencias a elementos del DOM (sin cambios)
     const scoresContainer = document.getElementById('scores-container');
     const questionText = document.getElementById('question-text');
+    const questionContainer = document.getElementById('question-container');
     const optionsContainer = document.getElementById('options-container');
     const chestsContainer = document.getElementById('chests-container');
     const gameArea = document.getElementById('game-area');
@@ -12,13 +13,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     let questions = [];
     let currentQuestionIndex = 0;
     let currentTurnIndex = 0;
-    
-    // Paleta de colores para los grupos
+    let pendingEffect = null; // MODIFICACIÓ: Guardará el efecto del cofre mientras se elige un grupo.
+
     const groupColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
 
-    // --- INICIALIZACIÓN DEL JUEGO ---
+    // MODIFICACIÓ: Definimos la nueva lista de efectos de los cofres.
+    const chestEffects = [
+        { type: 'add', value: 50, message: "+50 Punts" },
+        { type: 'add', value: 100, message: "+100 Punts" },
+        { type: 'subtract', value: 25, message: "-25 Punts" },
+        { type: 'subtract', value: 75, message: "-75 Punts" },
+        { type: 'percentage', value: 0.3, message: "+30% de Punts" },
+        { type: 'percentage', value: 0.6, message: "+60% de Punts" },
+        { type: 'swap', message: "Intercanvi de Punts" }
+    ];
+
+    // --- INICIALIZACIÓN DEL JUEGO (sin cambios) ---
     async function initGame() {
-        // 1. Cargar grupos desde localStorage
         const savedGroups = localStorage.getItem('gameGroups');
         if (!savedGroups) {
             alert('No s\'han trobat grups. Redirigint a la pàgina de configuració.');
@@ -27,25 +38,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         groups = JSON.parse(savedGroups);
 
-        // 2. Cargar preguntas desde Google Sheets
         questions = await getQuestions();
         if (questions.length === 0) {
             questionText.textContent = 'No s\'han pogut carregar les preguntes. Intenta-ho de nou.';
             return;
         }
         
-        // 3. Renderizar UI inicial y empezar el primer turno
         renderScores();
         nextTurn();
     }
 
-    // --- LÓGICA DE TURNOS Y PREGUNTAS ---
+    // --- LÓGICA DE TURNOS Y PREGUNTAS (ligeramente modificada) ---
     function nextTurn() {
         if (currentQuestionIndex >= questions.length) {
             endGame();
             return;
         }
 
+        exitTargetingMode(); // MODIFICACIÓ: Nos aseguramos de salir del modo de selección.
         chestsContainer.style.display = 'none';
         optionsContainer.style.display = 'grid';
         
@@ -55,11 +65,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentQuestionIndex++;
     }
 
-    function displayQuestion() {
+    function displayQuestion() { // (sin cambios)
         const question = questions[currentQuestionIndex];
         const groupColor = groupColors[currentTurnIndex % groupColors.length];
         
-        document.getElementById('question-container').style.backgroundColor = groupColor;
+        questionContainer.style.backgroundColor = groupColor;
         questionText.textContent = question.pregunta;
 
         optionsContainer.innerHTML = '';
@@ -72,93 +82,122 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // MODIFICACIÓ: La lógica de respuesta ha cambiado significativamente.
     function handleAnswer(selectedIndex, correctIndex) {
         const options = optionsContainer.children;
-        // Deshabilitar botones para evitar clics múltiples
         for (let option of options) {
             option.classList.add('disabled');
         }
 
-        // Marcar respuesta
-        if (selectedIndex === correctIndex) {
-            options[selectedIndex - 1].classList.add('correct');
-        } else {
-            options[selectedIndex - 1].classList.add('incorrect');
-            // Mostrar siempre la correcta
-            options[correctIndex - 1].classList.add('correct');
-        }
+        const isCorrect = selectedIndex === correctIndex;
 
-        // Esperar 1 segundo y mostrar cofres
-        setTimeout(() => {
-            optionsContainer.style.display = 'none';
-            showChests();
-        }, 1500);
+        if (isCorrect) {
+            // Si es CORRECTA, marcamos y mostramos cofres
+            options[selectedIndex - 1].classList.add('correct');
+            setTimeout(() => {
+                optionsContainer.style.display = 'none';
+                showChests();
+            }, 1500);
+        } else {
+            // Si es INCORRECTA, marcamos, mostramos la correcta y pasamos de turno
+            options[selectedIndex - 1].classList.add('incorrect');
+            options[correctIndex - 1].classList.add('correct');
+            setTimeout(() => {
+                // Pasamos al siguiente grupo y a la siguiente pregunta
+                currentTurnIndex = (currentTurnIndex + 1) % groups.length;
+                nextTurn();
+            }, 2000); // Damos un poco más de tiempo para ver la respuesta correcta
+        }
     }
     
-    // --- LÓGICA DE PUNTUACIÓN Y COFRES ---
+    // --- LÓGICA DE COFRES Y SELECCIÓN DE GRUPO (completamente nueva) ---
     function showChests() {
+        questionText.textContent = 'Correcte! Tria un cofre!';
         chestsContainer.style.display = 'block';
         const chestElements = chestsContainer.querySelectorAll('.chest');
         chestElements.forEach(chest => {
-            chest.onclick = (event) => handleChestChoice(event); // Usamos onclick para reemplazar el listener anterior
+            chest.onclick = () => handleChestChoice();
         });
     }
 
     function handleChestChoice() {
-        const effects = [
-            { type: 'add', value: 50 }, { type: 'add', value: 100 }, { type: 'add', value: 150 },
-            { type: 'subtract', value: 50 }, { type: 'subtract', value: 100 },
-            { type: 'double' },
-            { type: 'steal', value: 75 }
-        ];
+        // 1. Elegir un efecto aleatorio
+        const randomEffect = chestEffects[Math.floor(Math.random() * chestEffects.length)];
+        pendingEffect = randomEffect;
 
-        // Elegir un efecto aleatorio
-        const randomEffect = effects[Math.floor(Math.random() * effects.length)];
-        applyEffect(randomEffect);
-
-        // Cambiar turno y mostrar siguiente pregunta
-        currentTurnIndex = (currentTurnIndex + 1) % groups.length;
-        setTimeout(nextTurn, 1500); // Dar tiempo para ver el resultado
+        // 2. Ocultar cofres y mostrar instrucciones
+        chestsContainer.style.display = 'none';
+        questionText.textContent = `Efecte: "${pendingEffect.message}". Selecciona un grup per aplicar-lo.`;
+        
+        // 3. Activar modo de selección de grupo
+        enterTargetingMode();
     }
 
-    function applyEffect(effect) {
-        const currentGroup = groups[currentTurnIndex];
-        let message = '';
+    function enterTargetingMode() {
+        const scoreBlocks = scoresContainer.querySelectorAll('.score-block');
+        scoreBlocks.forEach((block, index) => {
+            if (index === currentTurnIndex) {
+                // El grupo actual no se puede seleccionar
+                block.classList.add('disabled');
+            } else {
+                // Los otros grupos se pueden seleccionar
+                block.classList.add('targetable');
+                block.onclick = () => applyEffectToTarget(index);
+            }
+        });
+    }
 
-        switch (effect.type) {
+    function applyEffectToTarget(targetIndex) {
+        const currentGroup = groups[currentTurnIndex];
+        const targetGroup = groups[targetIndex];
+
+        switch (pendingEffect.type) {
             case 'add':
-                currentGroup.score += effect.value;
-                message = `${currentGroup.name} guanya ${effect.value} punts!`;
+                targetGroup.score += pendingEffect.value;
                 break;
             case 'subtract':
-                currentGroup.score = Math.max(0, currentGroup.score - effect.value);
-                message = `${currentGroup.name} perd ${effect.value} punts...`;
+                targetGroup.score = Math.max(0, targetGroup.score - pendingEffect.value);
                 break;
-            case 'double':
-                 currentGroup.score *= 2;
-                 message = `Punts duplicats per a ${currentGroup.name}!`;
-                 break;
-            case 'steal':
-                if (groups.length > 1) {
-                    let targetIndex;
-                    do {
-                        targetIndex = Math.floor(Math.random() * groups.length);
-                    } while (targetIndex === currentTurnIndex);
-                    
-                    const targetGroup = groups[targetIndex];
-                    const stolenAmount = Math.min(targetGroup.score, effect.value);
-                    targetGroup.score -= stolenAmount;
-                    currentGroup.score += stolenAmount;
-                    message = `${currentGroup.name} roba ${stolenAmount} punts a ${targetGroup.name}!`;
-                }
+            case 'percentage':
+                const increase = Math.round(targetGroup.score * pendingEffect.value);
+                targetGroup.score += increase;
+                break;
+            case 'swap':
+                // Intercambiamos las puntuaciones usando desestructuración
+                [currentGroup.score, targetGroup.score] = [targetGroup.score, currentGroup.score];
                 break;
         }
-
-        alert(message); // Simple alerta para notificar el efecto
+        
+        // Limpiamos el estado y pasamos al siguiente turno
+        pendingEffect = null;
         renderScores();
+        
+        setTimeout(() => {
+            currentTurnIndex = (currentTurnIndex + 1) % groups.length;
+            nextTurn();
+        }, 1500);
+    }
+    
+    function exitTargetingMode() {
+        const scoreBlocks = scoresContainer.querySelectorAll('.score-block');
+        scoreBlocks.forEach(block => {
+            block.classList.remove('targetable', 'disabled');
+            block.onclick = null; // Limpiamos el evento
+        });
     }
 
-    // --- RENDERIZADO Y UI ---
+    // --- RENDERIZADO Y UI (sin cambios) ---
+    function renderScores() { /* ...código sin cambios... */ }
+    function updateActiveGroup() { /* ...código sin cambios... */ }
+    
+    // --- FINAL DEL JUEGO (sin cambios) ---
+    function endGame() { /* ...código sin cambios... */ }
+
+    // --- Iniciar el juego ---
+    initGame();
+
+
+    // --- Copia aquí las funciones sin modificar para que el archivo esté completo ---
     function renderScores() {
         scoresContainer.innerHTML = '';
         groups.forEach((group, index) => {
@@ -184,12 +223,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // --- FINAL DEL JUEGO ---
     function endGame() {
         gameArea.style.display = 'none';
         podiumContainer.style.display = 'flex';
-
-        // Ordenar grupos por puntuación (desempate por orden original)
         groups.sort((a, b) => b.score - a.score);
 
         const podiumPlaces = document.getElementById('podium-places');
@@ -200,12 +236,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             podiumStep.innerHTML = `<h2>${index + 1}. ${group.name} - ${group.score} punts</h2>`;
             podiumPlaces.appendChild(podiumStep);
         });
-
-        // Enviar puntuaciones a Google Sheets
         saveScores(groups);
     }
-
-
-    // --- Iniciar el juego ---
-    initGame();
 });
