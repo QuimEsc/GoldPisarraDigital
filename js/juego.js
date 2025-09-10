@@ -13,26 +13,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     let questions = [];
     let currentQuestionIndex = 0;
     let currentTurnIndex = 0;
-    let pendingEffect = null; // MODIFICACIÓ: Guardará el efecto del cofre mientras se elige un grupo.
+    let pendingEffect = null;
 
     const groupColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
 
-    // MODIFICACIÓ: Definimos la nueva lista de efectos de los cofres.
+    // Lista de efectos para los cofres (sin cambios)
     const chestEffects = [
         { type: 'add', value: 50, message: "+50 Punts" },
+        { type: 'add', value: 75, message: "+75 Punts" },
         { type: 'add', value: 100, message: "+100 Punts" },
-        { type: 'add', value: 50, message: "+60 Punts" },
-        { type: 'add', value: 100, message: "+80 Punts" },
-        { type: 'add', value: 50, message: "+75 Punts" },
-        { type: 'add', value: 100, message: "+25 Punts" },
-        { type: 'subtract', value: 25, message: "-25 Punts" },
-        { type: 'subtract', value: 75, message: "-75 Punts" },
+        { type: 'add', value: 125, message: "+125 Punts" },
+        { type: 'add', value: 150, message: "+150 Punts" },
+        { type: 'percentage', value: 0.2, message: "+20% de Punts" },
         { type: 'percentage', value: 0.3, message: "+30% de Punts" },
-        { type: 'percentage', value: 0.6, message: "+60% de Punts" },
-        { type: 'swap', message: "Intercanvi de Punts" }
+        { type: 'percentage', value: 0.5, message: "+50% de Punts" },
+        { type: 'swap', message: "Intercanvi de Punts!" },
+        { type: 'swap', message: "Canvi de rànquing!" },
+        { type: 'subtract', value: 25, message: "-25 Punts" },
+        { type: 'subtract', value: 50, message: "-50 Punts" },
+        { type: 'percentage', value: -0.2, message: "-20% de Punts" },
+        { type: 'steal', value: 50, message: "Robes 50 punts d'un rival!" },
+        { type: 'doubleNext', message: "El proper cofre que òbriga aquest grup valdrà el doble!" }
     ];
 
-    // --- INICIALIZACIÓN DEL JUEGO (sin cambios) ---
+    // MODIFICACIÓ: Función para barajar el array de preguntas (algoritmo Fisher-Yates)
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]]; // Intercambia elementos
+        }
+    }
+
+    // --- INICIALIZACIÓN DEL JUEGO ---
     async function initGame() {
         const savedGroups = localStorage.getItem('gameGroups');
         if (!savedGroups) {
@@ -40,7 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.href = 'index.html';
             return;
         }
-        groups = JSON.parse(savedGroups);
+        let tempGroups = JSON.parse(savedGroups);
+        groups = tempGroups.map(g => ({ ...g, doubleNext: false }));
 
         questions = await getQuestions();
         if (questions.length === 0) {
@@ -48,75 +61,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
+        // MODIFICACIÓ: Llamamos a la función para barajar las preguntas
+        shuffleArray(questions);
+        
         renderScores();
         nextTurn();
     }
 
-    // --- LÓGICA DE TURNOS Y PREGUNTAS (ligeramente modificada) ---
+    // --- LÓGICA DE TURNOS Y PREGUNTAS ---
     function nextTurn() {
         if (currentQuestionIndex >= questions.length) {
             endGame();
             return;
         }
-
-        exitTargetingMode(); // MODIFICACIÓ: Nos aseguramos de salir del modo de selección.
+        exitTargetingMode();
         chestsContainer.style.display = 'none';
         optionsContainer.style.display = 'grid';
-        
         displayQuestion();
         updateActiveGroup();
-
         currentQuestionIndex++;
     }
 
-    function displayQuestion() { // (sin cambios)
+    function displayQuestion() {
         const question = questions[currentQuestionIndex];
         const groupColor = groupColors[currentTurnIndex % groupColors.length];
         
         questionContainer.style.backgroundColor = groupColor;
         questionText.textContent = question.pregunta;
-
+        
         optionsContainer.innerHTML = '';
+        const elementsToRender = [questionText];
+        
         question.opcions.forEach((opcio, index) => {
             const optionButton = document.createElement('div');
             optionButton.classList.add('option');
             optionButton.textContent = opcio;
             optionButton.addEventListener('click', () => handleAnswer(index + 1, question.correcta));
             optionsContainer.appendChild(optionButton);
+            elementsToRender.push(optionButton);
         });
+
+        if (window.MathJax) {
+            MathJax.typesetPromise(elementsToRender).catch(function (err) {
+                console.log('Error rendering MathJax: ' + err.message);
+            });
+        }
     }
 
-    // MODIFICACIÓ: La lógica de respuesta ha cambiado significativamente.
+    // --- LÓGICA DE RESPUESTA ---
     function handleAnswer(selectedIndex, correctIndex) {
         const options = optionsContainer.children;
-        for (let option of options) {
-            option.classList.add('disabled');
-        }
-
+        for (let option of options) { option.classList.add('disabled'); }
         const isCorrect = selectedIndex === correctIndex;
-
         if (isCorrect) {
-            // Si es CORRECTA, marcamos y mostramos cofres
             options[selectedIndex - 1].classList.add('correct');
             setTimeout(() => {
                 optionsContainer.style.display = 'none';
                 showChests();
             }, 1500);
         } else {
-            // Si es INCORRECTA, marcamos, mostramos la correcta y pasamos de turno
             options[selectedIndex - 1].classList.add('incorrect');
             options[correctIndex - 1].classList.add('correct');
             setTimeout(() => {
-                // Pasamos al siguiente grupo y a la siguiente pregunta
                 currentTurnIndex = (currentTurnIndex + 1) % groups.length;
                 nextTurn();
-            }, 2000); // Damos un poco más de tiempo para ver la respuesta correcta
+            }, 2000);
         }
     }
     
-    // --- LÓGICA DE COFRES Y SELECCIÓN DE GRUPO (completamente nueva) ---
+    // --- LÓGICA DE COFRES Y SELECCIÓN DE GRUPO ---
     function showChests() {
         questionText.textContent = 'Correcte! Tria un cofre!';
+        if (window.MathJax) { MathJax.typesetPromise([questionText]); }
         chestsContainer.style.display = 'block';
         const chestElements = chestsContainer.querySelectorAll('.chest');
         chestElements.forEach(chest => {
@@ -125,15 +141,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function handleChestChoice() {
-        // 1. Elegir un efecto aleatorio
         const randomEffect = chestEffects[Math.floor(Math.random() * chestEffects.length)];
         pendingEffect = randomEffect;
-
-        // 2. Ocultar cofres y mostrar instrucciones
         chestsContainer.style.display = 'none';
         questionText.textContent = `Efecte: "${pendingEffect.message}". Selecciona un grup per aplicar-lo.`;
-        
-        // 3. Activar modo de selección de grupo
+        if (window.MathJax) { MathJax.typesetPromise([questionText]); }
         enterTargetingMode();
     }
 
@@ -141,10 +153,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const scoreBlocks = scoresContainer.querySelectorAll('.score-block');
         scoreBlocks.forEach((block, index) => {
             if (index === currentTurnIndex) {
-                // El grupo actual no se puede seleccionar
                 block.classList.add('disabled');
             } else {
-                // Los otros grupos se pueden seleccionar
                 block.classList.add('targetable');
                 block.onclick = () => applyEffectToTarget(index);
             }
@@ -154,25 +164,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     function applyEffectToTarget(targetIndex) {
         const currentGroup = groups[currentTurnIndex];
         const targetGroup = groups[targetIndex];
+        let effectValue = pendingEffect.value || 0;
+        let finalMessage = "";
+
+        if (targetGroup.doubleNext && pendingEffect.type !== 'swap' && pendingEffect.type !== 'doubleNext') {
+            effectValue *= 2;
+            targetGroup.doubleNext = false;
+            finalMessage = ` (Efecte duplicat! 🔥)`;
+        }
 
         switch (pendingEffect.type) {
             case 'add':
-                targetGroup.score += pendingEffect.value;
+                targetGroup.score += effectValue;
                 break;
             case 'subtract':
-                targetGroup.score = Math.max(0, targetGroup.score - pendingEffect.value);
+                targetGroup.score = Math.max(0, targetGroup.score - effectValue);
                 break;
             case 'percentage':
-                const increase = Math.round(targetGroup.score * pendingEffect.value);
-                targetGroup.score += increase;
+                const change = Math.round(targetGroup.score * effectValue);
+                targetGroup.score += change;
                 break;
             case 'swap':
-                // Intercambiamos las puntuaciones usando desestructuración
                 [currentGroup.score, targetGroup.score] = [targetGroup.score, currentGroup.score];
+                break;
+            case 'steal':
+                const stolenAmount = Math.min(targetGroup.score, effectValue);
+                targetGroup.score -= stolenAmount;
+                currentGroup.score += stolenAmount;
+                break;
+            case 'doubleNext':
+                targetGroup.doubleNext = true;
                 break;
         }
         
-        // Limpiamos el estado y pasamos al siguiente turno
+        alert(`${pendingEffect.message}\nAplicat a: ${targetGroup.name}.${finalMessage}`);
         pendingEffect = null;
         renderScores();
         
@@ -186,22 +211,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const scoreBlocks = scoresContainer.querySelectorAll('.score-block');
         scoreBlocks.forEach(block => {
             block.classList.remove('targetable', 'disabled');
-            block.onclick = null; // Limpiamos el evento
+            block.onclick = null;
         });
     }
 
-    // --- RENDERIZADO Y UI (sin cambios) ---
-    function renderScores() { /* ...código sin cambios... */ }
-    function updateActiveGroup() { /* ...código sin cambios... */ }
-    
-    // --- FINAL DEL JUEGO (sin cambios) ---
-    function endGame() { /* ...código sin cambios... */ }
-
-    // --- Iniciar el juego ---
-    initGame();
-
-
-    // --- Copia aquí las funciones sin modificar para que el archivo esté completo ---
+    // --- RENDERIZADO, ACTUALIZACIÓN DE GRUPO ACTIVO Y FINAL DEL JUEGO ---
     function renderScores() {
         scoresContainer.innerHTML = '';
         groups.forEach((group, index) => {
@@ -211,6 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             scoreBlock.innerHTML = `
                 <h3>${group.name}</h3>
                 <p>${group.score}</p>
+                ${group.doubleNext ? '<span>🔥</span>' : ''}
             `;
             scoresContainer.appendChild(scoreBlock);
         });
@@ -226,12 +241,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
-    
+
     function endGame() {
         gameArea.style.display = 'none';
         podiumContainer.style.display = 'flex';
         groups.sort((a, b) => b.score - a.score);
-
         const podiumPlaces = document.getElementById('podium-places');
         podiumPlaces.innerHTML = '';
         groups.forEach((group, index) => {
@@ -242,5 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         saveScores(groups);
     }
-});
 
+    // --- Iniciar el juego ---
+    initGame();
+});
