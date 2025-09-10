@@ -203,4 +203,33 @@ button.primary {
     #options-container {
         grid-template-columns: 1fr;
     }
+
+}
+
+/* MODIFICACIÓ: Añade estas clases al final del archivo */
+
+.score-block.targetable {
+    cursor: pointer;
+    animation: pulse 1.5s infinite;
+    border: 3px solid var(--primary-color);
+}
+
+.score-block.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 6px 15px rgba(74, 71, 163, 0.4);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
 }
