@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Referencias a elementos del DOM (sin cambios)
+    // Referencias a elementos del DOM
     const scoresContainer = document.getElementById('scores-container');
     const questionText = document.getElementById('question-text');
     const questionContainer = document.getElementById('question-container');
@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chestsContainer = document.getElementById('chests-container');
     const gameArea = document.getElementById('game-area');
     const podiumContainer = document.getElementById('podium-container');
+    const timerDisplay = document.getElementById('timer-display'); // MODIFICACIÓ: Referencia al temporizador
 
     // Estado del juego
     let groups = [];
@@ -14,10 +15,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentQuestionIndex = 0;
     let currentTurnIndex = 0;
     let pendingEffect = null;
+    let questionTimer = null; // MODIFICACIÓ: Variable para controlar el intervalo del temporizador
 
     const groupColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
 
-    // Lista de efectos para los cofres (sin cambios)
+    // MODIFICACIÓ: Añadido el nuevo efecto 'reset'
     const chestEffects = [
         { type: 'add', value: 50, message: "+50 Punts" },
         { type: 'add', value: 75, message: "+75 Punts" },
@@ -33,22 +35,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         { type: 'subtract', value: 50, message: "-50 Punts" },
         { type: 'percentage', value: -0.2, message: "-20% de Punts" },
         { type: 'steal', value: 50, message: "Robes 50 punts d'un rival!" },
-        { type: 'doubleNext', message: "El proper cofre que òbriga aquest grup valdrà el doble!" }
+        { type: 'doubleNext', message: "El proper cofre que òbriga aquest grup valdrà el doble!" },
+        { type: 'reset', message: "L'equip perd tots els punts!" } // Nuevo efecto
     ];
 
-    // MODIFICACIÓ: Función para barajar el array de preguntas (algoritmo Fisher-Yates)
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]]; // Intercambia elementos
+            [array[i], array[j]] = [array[j], array[i]];
         }
     }
 
-    // --- INICIALIZACIÓN DEL JUEGO ---
     async function initGame() {
         const savedGroups = localStorage.getItem('gameGroups');
         if (!savedGroups) {
-            alert('No s\'han trobat grups. Redirigint a la pàgina de configuració.');
             window.location.href = 'index.html';
             return;
         }
@@ -57,18 +57,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         questions = await getQuestions();
         if (questions.length === 0) {
-            questionText.textContent = 'No s\'han pogut carregar les preguntes. Intenta-ho de nou.';
+            questionText.textContent = 'No s\'han pogut carregar les preguntes.';
             return;
         }
         
-        // MODIFICACIÓ: Llamamos a la función para barajar las preguntas
         shuffleArray(questions);
-        
         renderScores();
         nextTurn();
     }
 
-    // --- LÓGICA DE TURNOS Y PREGUNTAS ---
     function nextTurn() {
         if (currentQuestionIndex >= questions.length) {
             endGame();
@@ -82,7 +79,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentQuestionIndex++;
     }
 
+    // MODIFICACIÓ: Ahora inicia el temporizador de la pregunta
     function displayQuestion() {
+        clearInterval(questionTimer); // Limpia cualquier temporizador anterior
         const question = questions[currentQuestionIndex];
         const groupColor = groupColors[currentTurnIndex % groupColors.length];
         
@@ -102,16 +101,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         if (window.MathJax) {
-            MathJax.typesetPromise(elementsToRender).catch(function (err) {
-                console.log('Error rendering MathJax: ' + err.message);
-            });
+            MathJax.typesetPromise(elementsToRender).catch(err => console.log('Error MathJax: ' + err.message));
         }
+
+        // Inicia el temporizador para esta pregunta
+        startTimer(question.temps);
     }
 
-    // --- LÓGICA DE RESPUESTA ---
+    // MODIFICACIÓ: Nueva función para manejar el temporizador
+    function startTimer(duration) {
+        let timeLeft = duration;
+        timerDisplay.textContent = timeLeft;
+
+        questionTimer = setInterval(() => {
+            timeLeft--;
+            timerDisplay.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(questionTimer);
+                handleTimeUp();
+            }
+        }, 1000);
+    }
+    
+    // MODIFICACIÓ: Nueva función para cuando se agota el tiempo
+    function handleTimeUp() {
+        const options = optionsContainer.children;
+        for (let option of options) {
+            option.classList.add('disabled');
+        }
+
+        // Muestra la respuesta correcta
+        const question = questions[currentQuestionIndex-1];
+        options[question.correcta - 1].classList.add('correct');
+        
+        // Simula una respuesta incorrecta: pasa al siguiente turno
+        setTimeout(() => {
+            currentTurnIndex = (currentTurnIndex + 1) % groups.length;
+            nextTurn();
+        }, 2000);
+    }
+
+    // MODIFICACIÓ: Ahora detiene el temporizador al responder
     function handleAnswer(selectedIndex, correctIndex) {
+        clearInterval(questionTimer); // Detiene el temporizador
+        timerDisplay.textContent = ''; // Limpia el display del temporizador
+
         const options = optionsContainer.children;
         for (let option of options) { option.classList.add('disabled'); }
+
         const isCorrect = selectedIndex === correctIndex;
         if (isCorrect) {
             options[selectedIndex - 1].classList.add('correct');
@@ -129,7 +166,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- LÓGICA DE COFRES Y SELECCIÓN DE GRUPO ---
     function showChests() {
         questionText.textContent = 'Correcte! Tria un cofre!';
         if (window.MathJax) { MathJax.typesetPromise([questionText]); }
@@ -161,50 +197,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // MODIFICACIÓ: Añadido el caso 'reset' y eliminada la alerta
     function applyEffectToTarget(targetIndex) {
         const currentGroup = groups[currentTurnIndex];
         const targetGroup = groups[targetIndex];
         let effectValue = pendingEffect.value || 0;
-        let finalMessage = "";
 
         if (targetGroup.doubleNext && pendingEffect.type !== 'swap' && pendingEffect.type !== 'doubleNext') {
             effectValue *= 2;
             targetGroup.doubleNext = false;
-            finalMessage = ` (Efecte duplicat! 🔥)`;
         }
 
         switch (pendingEffect.type) {
-            case 'add':
-                targetGroup.score += effectValue;
-                break;
-            case 'subtract':
-                targetGroup.score = Math.max(0, targetGroup.score - effectValue);
-                break;
-            case 'percentage':
-                const change = Math.round(targetGroup.score * effectValue);
-                targetGroup.score += change;
-                break;
-            case 'swap':
-                [currentGroup.score, targetGroup.score] = [targetGroup.score, currentGroup.score];
-                break;
+            case 'add': targetGroup.score += effectValue; break;
+            case 'subtract': targetGroup.score = Math.max(0, targetGroup.score - effectValue); break;
+            case 'percentage': targetGroup.score += Math.round(targetGroup.score * effectValue); break;
+            case 'swap': [currentGroup.score, targetGroup.score] = [targetGroup.score, currentGroup.score]; break;
             case 'steal':
                 const stolenAmount = Math.min(targetGroup.score, effectValue);
                 targetGroup.score -= stolenAmount;
                 currentGroup.score += stolenAmount;
                 break;
-            case 'doubleNext':
-                targetGroup.doubleNext = true;
-                break;
+            case 'doubleNext': targetGroup.doubleNext = true; break;
+            case 'reset': targetGroup.score = 0; break; // Nuevo caso
         }
         
-        alert(`${pendingEffect.message}\nAplicat a: ${targetGroup.name}.${finalMessage}`);
         pendingEffect = null;
         renderScores();
         
         setTimeout(() => {
             currentTurnIndex = (currentTurnIndex + 1) % groups.length;
             nextTurn();
-        }, 1500);
+        }, 500); // Reducido el tiempo de espera ya que no hay alerta
     }
     
     function exitTargetingMode() {
@@ -215,7 +239,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- RENDERIZADO, ACTUALIZACIÓN DE GRUPO ACTIVO Y FINAL DEL JUEGO ---
+    function renderScores() { /* ...código sin cambios... */ }
+    function updateActiveGroup() { /* ...código sin cambios... */ }
+    function endGame() { /* ...código sin cambios... */ }
+
+    initGame();
+
     function renderScores() {
         scoresContainer.innerHTML = '';
         groups.forEach((group, index) => {
@@ -230,19 +259,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             scoresContainer.appendChild(scoreBlock);
         });
     }
-
     function updateActiveGroup() {
         const scoreBlocks = scoresContainer.querySelectorAll('.score-block');
         scoreBlocks.forEach((block, index) => {
-            if (index === currentTurnIndex) {
-                block.classList.add('active');
-            } else {
-                block.classList.remove('active');
-            }
+            if (index === currentTurnIndex) { block.classList.add('active'); } 
+            else { block.classList.remove('active'); }
         });
     }
-
     function endGame() {
+        clearInterval(questionTimer); // Detiene cualquier temporizador activo al final
         gameArea.style.display = 'none';
         podiumContainer.style.display = 'flex';
         groups.sort((a, b) => b.score - a.score);
@@ -256,7 +281,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         saveScores(groups);
     }
-
-    // --- Iniciar el juego ---
-    initGame();
 });
