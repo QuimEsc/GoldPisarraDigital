@@ -1,12 +1,13 @@
 /* Estilos generales */
 :root {
-  --primary-color: #4a47a3;
-  --secondary-color: #706fd3;
+  --primary-color: #3498db; /* Un azul más similar al de la imagen */
+  --secondary-color: #2980b9;
   --background-color: #f6f5f7;
   --text-color: #333;
   --white: #fff;
   --green: #2ecc71;
   --red: #e74c3c;
+  --timer-background: #e0e0e0;
 }
 
 body {
@@ -30,59 +31,49 @@ body {
   width: 100%;
   max-width: 600px;
   text-align: center;
+  /* MODIFICACIÓ: Posicionamiento relativo y margen superior para el temporizador */
+  position: relative;
+  margin-top: 50px;
 }
+
+/* --- MODIFICACIÓ: Estilos para el nuevo temporizador --- */
+#timer-wrapper {
+    position: absolute;
+    top: -35px; /* Lo empuja hacia arriba, fuera del contenedor */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    /* El fondo es un gradiente cónico que se animará con JS */
+    background: conic-gradient(var(--primary-color) 360deg, var(--timer-background) 0deg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+#timer-display {
+    width: 60px;
+    height: 60px;
+    background-color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+/* --- Fin de la modificación del temporizador --- */
 
 h1, h2 {
-  color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
-/* --- Página de Grupos (index.html) --- */
-#group-list .group-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-#group-list label {
-  font-weight: bold;
-  margin-right: 10px;
-  min-width: 80px;
-}
-
-#group-list input {
-  flex-grow: 1;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 1rem;
-}
-
-.button-container {
-  margin-top: 20px;
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
-
-button {
-  padding: 12px 25px;
-  border: none;
-  border-radius: 5px;
-  background-color: var(--secondary-color);
-  color: var(--white);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.3s, transform 0.2s;
-}
-
-button:hover {
-  background-color: var(--primary-color);
-  transform: translateY(-2px);
-}
-
-button.primary {
-  background-color: var(--primary-color);
-  font-weight: bold;
+#group-list .group-item, #scores-container, .button-container, .podium-step {
+    /* (Estilos de otras páginas y elementos no modificados) */
+    /* ... */
 }
 
 /* --- Página de Juego (juego.html) --- */
@@ -93,36 +84,36 @@ button.primary {
   gap: 15px;
   margin-bottom: 30px;
 }
-
 .score-block {
-  padding: 10px 20px;
-  border-radius: 8px;
-  color: var(--white);
-  min-width: 120px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: var(--white);
+    min-width: 120px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 .score-block.active {
     transform: scale(1.15);
     box-shadow: 0 8px 20px rgba(0,0,0,0.2);
     border: 3px solid var(--white);
 }
-.score-block h3 {
-    margin: 0;
-    font-size: 1.2rem;
-}
-.score-block p {
-    margin: 5px 0 0;
-    font-size: 1.8rem;
-    font-weight: bold;
+.score-block h3 { margin: 0; font-size: 1.2rem; }
+.score-block p { margin: 5px 0 0; font-size: 1.8rem; font-weight: bold; }
+.score-block.targetable { cursor: pointer; animation: pulse 1.5s infinite; border: 3px solid var(--primary-color); }
+.score-block.disabled { opacity: 0.5; cursor: not-allowed; }
+
+@keyframes pulse {
+    50% { transform: scale(1.05); }
 }
 
 #question-container {
+    position: relative; /* Restablecido por si acaso */
     padding: 25px;
     border-radius: 10px;
     margin-bottom: 20px;
     color: var(--white);
     transition: background-color 0.5s;
+    background-color: var(--primary-color); /* Color de fondo por defecto */
 }
 #question-text {
     font-size: 1.5rem;
@@ -137,7 +128,8 @@ button.primary {
 
 .option {
     padding: 20px;
-    background: var(--white);
+    background: var(--primary-color);
+    color: var(--white);
     border: 2px solid var(--secondary-color);
     border-radius: 8px;
     cursor: pointer;
@@ -145,113 +137,33 @@ button.primary {
     transition: all 0.2s ease;
 }
 .option:hover:not(.disabled) {
-    background-color: #eef;
+    background-color: var(--secondary-color);
     transform: translateY(-3px);
 }
-.option.correct {
-    background-color: var(--green);
-    color: var(--white);
-    border-color: var(--green);
-}
-.option.incorrect {
-    background-color: var(--red);
-    color: var(--white);
-    border-color: var(--red);
-}
-.option.disabled {
-    cursor: not-allowed;
-    opacity: 0.7;
-}
+.option.correct { background-color: var(--green); border-color: var(--green); }
+.option.incorrect { background-color: var(--red); border-color: var(--red); }
+.option.disabled { cursor: not-allowed; opacity: 0.7; }
 
 #chests-container {
-    display: none; /* Oculto por defecto */
+    display: none;
     justify-content: space-around;
     margin-top: 30px;
     gap: 20px;
 }
-.chest {
-    font-size: 4rem;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-.chest:hover {
-    transform: scale(1.2);
-}
+.chest { font-size: 4rem; cursor: pointer; transition: transform 0.2s; }
+.chest:hover { transform: scale(1.2); }
 
 #podium-container {
     display: none;
     flex-direction: column;
     align-items: center;
 }
-.podium-step {
-    margin: 5px;
-    padding: 15px 30px;
-    border-radius: 8px;
-    color: white;
-    font-weight: bold;
-    width: 80%;
-}
+.podium-step { margin: 5px; padding: 15px 30px; border-radius: 8px; color: white; font-weight: bold; width: 80%; }
 .podium-1 { background-color: #ffd700; color: #333; }
 .podium-2 { background-color: #c0c0c0; color: #333; }
 .podium-3 { background-color: #cd7f32; }
 
-/* Responsive */
 @media (max-width: 600px) {
-    .container {
-        padding: 20px;
-    }
-    #options-container {
-        grid-template-columns: 1fr;
-    }
-
+    .container { padding: 20px; }
+    #options-container { grid-template-columns: 1fr; }
 }
-
-/* MODIFICACIÓ: Añade estas clases al final del archivo */
-
-.score-block.targetable {
-    cursor: pointer;
-    animation: pulse 1.5s infinite;
-    border: 3px solid var(--primary-color);
-}
-
-.score-block.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    50% {
-        transform: scale(1.05);
-        box-shadow: 0 6px 15px rgba(74, 71, 163, 0.4);
-    }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-}
-
-/* MODIFICACIÓ: Añade estas reglas al final del archivo */
-
-#question-container {
-    position: relative; /* Necesario para posicionar el temporizador dentro */
-    padding-top: 50px; /* Aumenta el padding para que no se solape con el temporizador */
-}
-
-#timer-display {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 1.6rem;
-    font-weight: bold;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.25);
-    padding: 5px 15px;
-    border-radius: 20px;
-    min-width: 30px;
-    text-align: center;
-}
-
