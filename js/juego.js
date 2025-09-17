@@ -7,7 +7,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chestsContainer = document.getElementById('chests-container');
     const gameArea = document.getElementById('game-area');
     const podiumContainer = document.getElementById('podium-container');
-    const timerDisplay = document.getElementById('timer-display'); // MODIFICACIÓ: Referencia al temporizador
+    // --- MODIFICACIÓ: Noves referències al temporitzador ---
+    const timerElement = document.getElementById('timer');
+    const timerText = document.getElementById('timer-text');
+    const timerProgress = document.getElementById('timer-progress');
 
     // Estado del juego
     let groups = [];
@@ -15,11 +18,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentQuestionIndex = 0;
     let currentTurnIndex = 0;
     let pendingEffect = null;
-    let questionTimer = null; // MODIFICACIÓ: Variable para controlar el intervalo del temporizador
+    
+    // --- MODIFICACIÓ: Noves variables per al temporitzador ---
+    let timerInterval = null;
+    let tiempoMaximoPregunta;
+    let startTime;
 
     const groupColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
 
-    // MODIFICACIÓ: Añadido el nuevo efecto 'reset'
     const chestEffects = [
         { type: 'add', value: 50, message: "+50 Punts" },
         { type: 'add', value: 75, message: "+75 Punts" },
@@ -36,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         { type: 'percentage', value: -0.2, message: "-20% de Punts" },
         { type: 'steal', value: 50, message: "Robes 50 punts d'un rival!" },
         { type: 'doubleNext', message: "El proper cofre que òbriga aquest grup valdrà el doble!" },
-        { type: 'reset', message: "L'equip perd tots els punts!" } // Nuevo efecto
+        { type: 'reset', message: "L'equip perd tots els punts!" }
     ];
 
     function shuffleArray(array) {
@@ -78,10 +84,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateActiveGroup();
         currentQuestionIndex++;
     }
-
-    // MODIFICACIÓ: Ahora inicia el temporizador de la pregunta
+    
     function displayQuestion() {
-        clearInterval(questionTimer); // Limpia cualquier temporizador anterior
         const question = questions[currentQuestionIndex];
         const groupColor = groupColors[currentTurnIndex % groupColors.length];
         
@@ -104,47 +108,59 @@ document.addEventListener('DOMContentLoaded', async () => {
             MathJax.typesetPromise(elementsToRender).catch(err => console.log('Error MathJax: ' + err.message));
         }
 
-        // Inicia el temporizador para esta pregunta
-        startTimer(question.temps);
+        startTimer(question.temps); // Inicia el nou temporitzador
     }
 
-    // MODIFICACIÓ: Nueva función para manejar el temporizador
+    // --- MODIFICACIÓ: Nova funció per al temporitzador circular ---
     function startTimer(duration) {
-        let timeLeft = duration;
-        timerDisplay.textContent = timeLeft;
+        clearInterval(timerInterval);
+        tiempoMaximoPregunta = duration;
+        startTime = Date.now();
+        
+        timerElement.style.display = 'flex'; // Mostra el temporitzador
+        
+        timerText.textContent = tiempoMaximoPregunta;
+        // El color s'agafa de la variable CSS del Joc 1 (--primary-color)
+        timerProgress.style.background = `conic-gradient(var(--primary-color) 360deg, #e9ecef 0deg)`;
 
-        questionTimer = setInterval(() => {
-            timeLeft--;
-            timerDisplay.textContent = timeLeft;
-            if (timeLeft <= 0) {
-                clearInterval(questionTimer);
+        timerInterval = setInterval(() => {
+            const tiempoTranscurrido = (Date.now() - startTime) / 1000;
+            const tiempoRestante = Math.ceil(tiempoMaximoPregunta - tiempoTranscurrido);
+            
+            timerText.textContent = tiempoRestante > 0 ? tiempoRestante : 0;
+            
+            const grados = (tiempoRestante / tiempoMaximoPregunta) * 360;
+            timerProgress.style.background = `conic-gradient(var(--primary-color) ${grados}deg, #e9ecef 0deg)`;
+
+            if (tiempoRestante <= 0) {
                 handleTimeUp();
             }
-        }, 1000);
+        }, 100); // Interval curt per a una animació més fluida
     }
     
-    // MODIFICACIÓ: Nueva función para cuando se agota el tiempo
+    // --- MODIFICACIÓ: Aquesta funció ara també atura el nou temporitzador ---
     function handleTimeUp() {
+        clearInterval(timerInterval);
+        timerElement.style.display = 'none'; // Amaga el temporitzador
+
         const options = optionsContainer.children;
         for (let option of options) {
             option.classList.add('disabled');
         }
 
-        // Muestra la respuesta correcta
         const question = questions[currentQuestionIndex-1];
         options[question.correcta - 1].classList.add('correct');
         
-        // Simula una respuesta incorrecta: pasa al siguiente turno
         setTimeout(() => {
             currentTurnIndex = (currentTurnIndex + 1) % groups.length;
             nextTurn();
         }, 2000);
     }
 
-    // MODIFICACIÓ: Ahora detiene el temporizador al responder
+    // --- MODIFICACIÓ: Aquesta funció ara també atura el nou temporitzador ---
     function handleAnswer(selectedIndex, correctIndex) {
-        clearInterval(questionTimer); // Detiene el temporizador
-        timerDisplay.textContent = ''; // Limpia el display del temporizador
+        clearInterval(timerInterval);
+        timerElement.style.display = 'none'; // Amaga el temporitzador
 
         const options = optionsContainer.children;
         for (let option of options) { option.classList.add('disabled'); }
@@ -197,7 +213,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // MODIFICACIÓ: Añadido el caso 'reset' y eliminada la alerta
     function applyEffectToTarget(targetIndex) {
         const currentGroup = groups[currentTurnIndex];
         const targetGroup = groups[targetIndex];
@@ -219,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentGroup.score += stolenAmount;
                 break;
             case 'doubleNext': targetGroup.doubleNext = true; break;
-            case 'reset': targetGroup.score = 0; break; // Nuevo caso
+            case 'reset': targetGroup.score = 0; break;
         }
         
         pendingEffect = null;
@@ -228,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             currentTurnIndex = (currentTurnIndex + 1) % groups.length;
             nextTurn();
-        }, 500); // Reducido el tiempo de espera ya que no hay alerta
+        }, 500);
     }
     
     function exitTargetingMode() {
@@ -238,12 +253,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.onclick = null;
         });
     }
-
-    function renderScores() { /* ...código sin cambios... */ }
-    function updateActiveGroup() { /* ...código sin cambios... */ }
-    function endGame() { /* ...código sin cambios... */ }
-
-    initGame();
 
     function renderScores() {
         scoresContainer.innerHTML = '';
@@ -259,6 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             scoresContainer.appendChild(scoreBlock);
         });
     }
+
     function updateActiveGroup() {
         const scoreBlocks = scoresContainer.querySelectorAll('.score-block');
         scoreBlocks.forEach((block, index) => {
@@ -266,8 +276,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             else { block.classList.remove('active'); }
         });
     }
+
     function endGame() {
-        clearInterval(questionTimer); // Detiene cualquier temporizador activo al final
+        clearInterval(timerInterval); // Atura qualsevol temporitzador actiu al final
         gameArea.style.display = 'none';
         podiumContainer.style.display = 'flex';
         groups.sort((a, b) => b.score - a.score);
@@ -281,4 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         saveScores(groups);
     }
+
+    // Comença el joc
+    initGame();
 });
